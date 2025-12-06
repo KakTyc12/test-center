@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Simple Tests App</title>
+<style>
+/* --- БАЗОВЫЙ СТИЛЬ --- */
+:root{
+  --bg:#f6f7fb; --card:#fff; --muted:#666; --accent:#2b7cff;
+  --ok:#28a745; --bad:#dc3545; --partial:#ffc107;
+}
+*{box-sizing:border-box; font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif}
+html,body{height:100%; margin:0; background:var(--bg); color:#111}
+.app{max-width:1000px; margin:24px auto; padding:18px}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.header h1{margin:0;font-size:20px}
+.btn{background:var(--accent); color:#fff; border:0;padding:8px 12px;border-radius:6px;cursor:pointer}
+.btn.secondary{background:#e9ecef;color:#111}
+.btn.danger{background:var(--bad)}
+.row{display:flex;gap:10px;align-items:center}
+.card{background:var(--card);padding:14px;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.hidden{display:none}
+.small{font-size:13px;color:var(--muted)}
+/* --- Upload page --- */
+.upload-area{display:flex;flex-direction:column;gap:12px}
+.question-block{border:1px solid #e6e9ef;padding:12px;border-radius:8px}
+.qtop{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.qnum{font-weight:600}
+.textarea{width:100%;min-height:64px;padding:8px;border-radius:6px;border:1px solid #ddd}
+.answers{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.answer-row{display:flex;gap:8px;align-items:center}
+.answer-row input[type="text"]{flex:1;padding:8px;border-radius:6px;border:1px solid #ddd}
+.controls{display:flex;gap:8px;align-items:center;margin-top:10px}
+.bottom-controls{display:flex;gap:10px;align-items:center;margin-top:12px}
+/* --- Test page --- */
+.test-area{display:flex;flex-direction:column;gap:12px}
+.question-header{display:flex;justify-content:space-between;align-items:center}
+.options{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.opt{display:flex;gap:10px;align-items:center;padding:8px;border-radius:6px;border:1px solid #f0f0f0}
+.nav{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+.finish{position:fixed; right:20px; bottom:20px}
+.progress{font-size:13px;color:var(--muted)}
+/* --- Results --- */
+.results{display:flex;flex-direction:column;gap:12px;align-items:center}
+.grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(40px,1fr)); gap:8px; width:100%; max-width:560px}
+.grid .cell{height:40px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:#eef2f7;color:#111;cursor:pointer}
+.legend{display:flex;gap:10px;align-items:center;margin-top:8px}
+.legend .item{display:flex;gap:6px;align-items:center}
+.legend .sw{width:16px;height:16px;border-radius:4px}
+.grid .cell.correct { background: var(--ok); color:white; }
+.grid .cell.incorrect { background: var(--bad); color:white; }
+.grid .cell.partial { background: var(--partial); color:#111; }
+.review {width:100%; max-width:800px}
+.small-muted{font-size:13px;color:var(--muted)}
+footer.note{margin-top:20px;font-size:13px;color:var(--muted)}
+/* ================= MOBILE ADAPTIVE FIX ================= */
+
+/* Общие улучшения для телефона */
+@media (max-width: 600px) {
+
+.app {
+  padding: 10px;
+}
+
+.header h1 {
+  font-size: 16px;
+}
+
+.btn {
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+.card {
+  padding: 12px;
+}
+
+/* upload page blocks */
+.question-block {
+  padding: 10px;
+}
+
+.textarea {
+  min-height: 50px;
+  font-size: 14px;
+}
+
+.answer-row input[type="text"] {
+  font-size: 14px;
+}
+
+.bottom-controls {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* test page */
+.question-header {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+#questionText {
+  font-size: 18px;
+}
+
+.options .opt {
+  flex-direction: row;
+  padding: 10px;
+}
+
+/* back / next */
+.nav {
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Finish button — вместо fixed будет статичная */
+#finishBtn {
+  position: static;
+  width: 100%;
+  margin-top: 12px;
+}
+
+/* results page */
+.results {
+  width: 100%;
+}
+
+.grid {
+  grid-template-columns: repeat(5, 1fr); /* было 10 → слишком мелко */
+  gap: 6px;
+}
+
+.grid .cell {
+  height: 36px;
+  font-size: 14px;
+}
+
+.legend {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.review {
+  padding: 0;
+}
+}
+
+/* Very small screens (iPhone SE / Android mini) */
+@media (max-width: 380px) {
+.grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+}
+
+</style>
+</head>
+<body>
+<div class="app card">
+  <div class="header">
+    <h1>Simple Tests — try your best</h1>
+    <div class="row">
+      <button id="goUpload" class="btn">Upload tests</button>
+    </div>
+  </div>
+
+  <!-- Upload page -->
+  <div id="uploadPage" class="">
+    <div class="card upload-area" id="questionsContainer">
+      <!-- Question blocks will be injected here -->
+    </div>
+    <div class="bottom-controls">
+      <button id="saveBtn" class="btn">Save</button>
+      <button id="deleteBtn" class="btn secondary">Delete</button>
+      <button id="startBtn" class="btn">Start the test</button>
+
+      <button id="exportBtn">export tests</button>
+      <button id="importBtn">import tests</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none;">
+    </div>
+    <div class="small-muted" style="margin-top:8px">
+      Data will be stored to localStorage. You can close the page - everything will remain saved.
+    </div>
+  </div>
+
+  <!-- Test page -->
+  <div id="testPage" class="hidden">
+    <div class="test-area card" style="padding:16px">
+      <div class="question-header">
+        <div>
+          <div class="qnum">Question <span id="currentIndex">1</span>/<span id="totalCount">0</span></div>
+          <div class="small-muted" id="progressText"></div>
+        </div>
+        <div class="progress" id="timeOrNothing"></div>
+      </div>
+      <div id="questionText" style="margin-top:8px;font-weight:600"></div>
+      <div id="options" class="options"></div>
+
+      <div class="nav">
+        <div><button id="backBtn" class="btn secondary">Back</button></div>
+        <div>
+          <button id="nextBtn" class="btn secondary">Next</button>
+        </div>
+      </div>
+    </div>
+    <button id="finishBtn" class="btn finish">Finish</button>
+  </div>
+
+  <!-- Results page -->
+  <div id="resultsPage" class="hidden card" style="padding:16px">
+    <div class="results">
+      <div style="text-align:center">
+        <h2>Result: <span id="percentResult">0%</span></h2>
+        <div class="small-muted" id="scoreText"></div>
+      </div>
+
+      <div class="grid" id="resultGrid"></div>
+
+      <div class="legend">
+        <div class="item"><div class="sw correct"></div><div class="small">Correct</div></div>
+        <div class="item"><div class="sw partial"></div><div class="small">Partially</div></div>
+        <div class="item"><div class="sw incorrect"></div><div class="small">Incorrect</div></div>
+      </div>
+
+      <div style="margin-top:12px">
+        <button id="startNew" class="btn">Start new test</button>
+      </div>
+
+      <div id="reviewArea" class="review hidden" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <footer class="note small-muted">Version: 1.0 — local, no server</footer>
+</div>
+
+<script>
+    let testsDB = [];
+
+/*
+  Simple Tests App — single file implementation
+  localStorage key: "simple_tests_db"
+  - DB format: [{id, text, options:[{id,text}], correct:[indexes]}, ...]
+*/
+
+const LSKEY = 'simple_tests_db_v1';
+const MAX_QUESTIONS_PER_RUN = 100;
+
+// Utilities
+const el = (sel, ctx=document) => ctx.querySelector(sel);
+const els = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+const uid = () => Math.random().toString(36).slice(2,9);
+
+function saveDB(db){
+  localStorage.setItem(LSKEY, JSON.stringify(db));
+}
+function loadDB(){
+  try{
+    const raw = localStorage.getItem(LSKEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return [] }
+}
+function clearDB(){ localStorage.removeItem(LSKEY) }
+
+// Shuffle array in place
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+/* ---------------- UPLOAD PAGE ---------------- */
+const questionsContainer = el('#questionsContainer');
+const goUpload = el('#goUpload');
+const uploadPage = el('#uploadPage');
+const testPage = el('#testPage');
+const resultsPage = el('#resultsPage');
+
+function createQuestionBlock(data){
+  // data: {id,text, options:[{id,text}], correct:[indexes]}
+  const id = data?.id || uid();
+  const qDiv = document.createElement('div');
+  qDiv.className = 'question-block';
+  qDiv.dataset.qid = id;
+
+  qDiv.innerHTML = `
+    <div class="qtop">
+      <div class="qnum">Question</div>
+      <div class="small-muted">id: ${id}</div>
+    </div>
+    <textarea class="textarea qtext" placeholder="Текст вопроса..."></textarea>
+    <div class="answers">
+      ${[0,1,2,3,4].map(i=>`
+        <div class="answer-row" data-idx="${i}">
+          <input type="text" class="ansText" placeholder="Вариант ответа ${i+1}">
+          <label class="small">правильный <input type="checkbox" class="isCorrect"></label>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  // Fill data if present
+  if(data){
+    qDiv.querySelector('.qtext').value = data.text || '';
+    data.options?.forEach((opt,idx)=>{
+      const row = qDiv.querySelector(`.answer-row[data-idx="${idx}"]`);
+      if(row) row.querySelector('.ansText').value = opt.text || '';
+    });
+    qDiv.querySelectorAll('.isCorrect').forEach((cb,idx)=>{
+      cb.checked = data.correct?.includes(idx) || false;
+    });
+  }
+
+  // Event: when any field changed in last block, append new blank block
+  const inputs = qDiv.querySelectorAll('.qtext, .ansText, .isCorrect');
+  inputs.forEach(inp=>{
+    inp.addEventListener('input', ()=> {
+      // if this block is last child and any non-empty value exists -> append new
+      const blocks = questionsContainer.querySelectorAll('.question-block');
+      const last = blocks[blocks.length-1];
+      if(last === qDiv){
+        // check if any field has value
+        const hasValue = qDiv.querySelector('.qtext').value.trim() !== '' ||
+          Array.from(qDiv.querySelectorAll('.ansText')).some(a=>a.value.trim() !== '') ||
+          Array.from(qDiv.querySelectorAll('.isCorrect')).some(c=>c.checked);
+        if(hasValue){
+          // append new empty block
+          questionsContainer.appendChild(createQuestionBlock());
+        }
+      }
+    });
+  });
+
+  return qDiv;
+}
+
+function renderUpload(){
+  questionsContainer.innerHTML = '';
+  const db = loadDB();
+  if(db.length===0){
+    questionsContainer.appendChild(createQuestionBlock());
+  }else{
+    // render existing blocks
+    db.forEach(q=>{
+      questionsContainer.appendChild(createQuestionBlock(q));
+    });
+    // append empty one at end
+    questionsContainer.appendChild(createQuestionBlock());
+  }
+}
+
+/* Save button handler */
+el('#saveBtn').addEventListener('click', ()=>{
+  // collect all blocks with non-empty question or options
+  const blocks = questionsContainer.querySelectorAll('.question-block');
+  const newDB = [];
+  blocks.forEach(b=>{
+    const text = b.querySelector('.qtext').value.trim();
+    const opts = [];
+    b.querySelectorAll('.answer-row').forEach(row=>{
+      opts.push({id: uid(), text: row.querySelector('.ansText').value.trim()});
+    });
+    const correct = [];
+    b.querySelectorAll('.answer-row').forEach((row,idx)=>{
+      if(row.querySelector('.isCorrect').checked) correct.push(idx);
+    });
+
+    // Only add if question text not empty and at least one non-empty option
+    const anyOptText = opts.some(o=>o.text && o.text.length>0);
+    if(text.length>0 && anyOptText){
+      newDB.push({
+        id: b.dataset.qid || uid(),
+        text,
+        options: opts,
+        correct
+      });
+    }
+  });
+
+  saveDB(newDB);
+  alert('Saved ' + newDB.length + ' questions to localStorage.');
+});
+
+/* Delete button */
+el('#deleteBtn').addEventListener('click', ()=>{
+  if(confirm('Удалить все вопросы из базы? Это действие необратимо.')){
+    clearDB();
+    renderUpload();
+    alert('База очищена.');
+  }
+});
+
+/* Start test button from upload page */
+el('#startBtn').addEventListener('click', ()=>{
+  const db = loadDB();
+  if(db.length===0){
+    alert('База пуста. Сохраните хотя бы один вопрос.');
+    return;
+  }
+  startTest();
+});
+
+/* Jump to upload page */
+goUpload.addEventListener('click', ()=>{
+  showUpload();
+});
+
+/* ---------------- TESTING ---------------- */
+let currentRun = {
+  questions: [],     // shuffled questions for this run (copies)
+  userAnswers: {},   // qIndex => selected (for radio: idx ; for checkbox: [idxs])
+  orderMap: [],      // maps run index -> original question id
+  optionOrder: {}    // qIndex -> shuffled option order array (maps displayed idx -> original idx)
+};
+const currentIndexEl = el('#currentIndex');
+const totalCountEl = el('#totalCount');
+const questionTextEl = el('#questionText');
+const optionsEl = el('#options');
+const backBtn = el('#backBtn');
+const nextBtn = el('#nextBtn');
+const finishBtn = el('#finishBtn');
+const progressText = el('#progressText');
+
+function showUpload(){
+  uploadPage.classList.remove('hidden');
+  testPage.classList.add('hidden');
+  resultsPage.classList.add('hidden');
+  renderUpload();
+}
+
+function showTest(){
+  uploadPage.classList.add('hidden');
+  testPage.classList.remove('hidden');
+  resultsPage.classList.add('hidden');
+}
+
+function showResults(){
+  uploadPage.classList.add('hidden');
+  testPage.classList.add('hidden');
+  resultsPage.classList.remove('hidden');
+}
+
+/* Prepare run: pick up to MAX_QUESTIONS_PER_RUN random questions */
+function prepareRun(){
+  const db = loadDB();
+  if(!db || db.length===0) { alert('No questions'); return false; }
+  const total = Math.min(MAX_QUESTIONS_PER_RUN, db.length);
+  const pool = [...db];
+  shuffle(pool);
+  const chosen = pool.slice(0, total);
+
+  // create deep copies and pre-shuffle options per question
+  currentRun.questions = chosen.map(q=>{
+    const options = q.options.map((o,idx)=>({oid: o.id, text: o.text, origIdx: idx}));
+    return {
+      id: q.id,
+      text: q.text,
+      options
+    };
+  });
+
+  // shuffle options per question and create optionOrder mapping
+  currentRun.optionOrder = {};
+  currentRun.questions.forEach((q,qi)=>{
+    shuffle(q.options);
+    // optionOrder: displayed index -> original index
+    currentRun.optionOrder[qi] = q.options.map(o=>o.origIdx);
+  });
+
+  currentRun.userAnswers = {}; // empty
+  currentRun.orderMap = currentRun.questions.map(q=>q.id);
+  return true;
+}
+
+/* startTest: prepare run and show first question */
+function startTest(){
+  if(!prepareRun()) return;
+  showTest();
+  renderQuestion(0);
+}
+
+/* Render question by run index */
+function renderQuestion(runIndex){
+  const total = currentRun.questions.length;
+  if(runIndex < 0 || runIndex >= total) return;
+  currentRun._cur = runIndex;
+  currentIndexEl.textContent = runIndex + 1;
+  totalCountEl.textContent = total;
+  const q = currentRun.questions[runIndex];
+  questionTextEl.textContent = q.text;
+
+  // Determine correct original indexes for this q (need from DB)
+  const db = loadDB();
+  const origQ = db.find(x=>x.id===q.id);
+  const correctOrig = origQ ? origQ.correct : [];
+
+  // displayed options
+  optionsEl.innerHTML = '';
+  const isMulti = correctOrig.length > 1;
+  const inputType = isMulti ? 'checkbox' : 'radio';
+  const name = 'qopt_' + runIndex;
+
+  q.options.forEach((opt,displayIdx)=>{
+    const origIdx = opt.origIdx;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'opt';
+    const input = document.createElement('input');
+    input.type = inputType;
+    input.name = name;
+    input.dataset.displayIdx = displayIdx;
+    input.id = `q${runIndex}_opt${displayIdx}`;
+    input.style.width = '18px';
+    input.style.height = '18px';
+    input.style.marginLeft = '6px';
+
+    const label = document.createElement('label');
+    label.setAttribute('for', input.id);
+    label.style.flex = '1';
+    label.style.cursor = 'pointer';
+    label.textContent = opt.text || '(пусто)';
+
+    wrapper.appendChild(input);
+    wrapper.appendChild(label);
+
+    optionsEl.appendChild(wrapper);
+  });
+
+  // Restore user selections if exist
+  const uAns = currentRun.userAnswers[runIndex];
+  if(uAns !== undefined){
+    if(Array.isArray(uAns)){
+      uAns.forEach(di=>{
+        const inp = optionsEl.querySelector(`input[data-display-idx="${di}"]`);
+        if(inp) inp.checked = true;
+      });
+    }else{
+      const inp = optionsEl.querySelector(`input[data-display-idx="${uAns}"]`);
+      if(inp) inp.checked = true;
+    }
+  }
+
+  // Update nav buttons
+  backBtn.disabled = runIndex === 0;
+  nextBtn.disabled = runIndex === total - 1;
+
+  progressText.textContent = `Вопрос ${runIndex+1} из ${total}`;
+}
+
+/* Save current UI selection to currentRun.userAnswers */
+function saveCurrentSelection(){
+  const runIndex = currentRun._cur;
+  const inputs = Array.from(optionsEl.querySelectorAll('input'));
+  if(inputs.length === 0) return;
+  const type = inputs[0].type;
+  if(type === 'radio'){
+    const checked = inputs.find(i=>i.checked);
+    if(checked){
+      currentRun.userAnswers[runIndex] = Number(checked.dataset.displayIdx);
+    }else{
+      delete currentRun.userAnswers[runIndex];
+    }
+  }else{
+    const checked = inputs.filter(i=>i.checked).map(i=>Number(i.dataset.displayIdx));
+    if(checked.length) currentRun.userAnswers[runIndex] = checked;
+    else delete currentRun.userAnswers[runIndex];
+  }
+}
+
+/* Navigation */
+nextBtn.addEventListener('click', ()=>{
+  saveCurrentSelection();
+  renderQuestion(currentRun._cur + 1);
+});
+backBtn.addEventListener('click', ()=>{
+  saveCurrentSelection();
+  renderQuestion(currentRun._cur - 1);
+});
+finishBtn.addEventListener('click', ()=>{
+  // Save current
+  saveCurrentSelection();
+  // Confirm
+  if(!confirm('Завершить тест и посмотреть результат?')) return;
+  computeResults();
+});
+
+/* ---------------- RESULTS ---------------- */
+const resultGrid = el('#resultGrid');
+const percentResult = el('#percentResult');
+const scoreText = el('#scoreText');
+const startNew = el('#startNew');
+const reviewArea = el('#reviewArea');
+
+function computeResults(){
+  const db = loadDB();
+  const total = currentRun.questions.length;
+  let totalScore = 0; // from 0..total where partial counts fractionally
+  const perQuestion = []; // {state:'correct'|'partial'|'incorrect', score:0..1}
+
+  currentRun.questions.forEach((q,qi)=>{
+    const origQ = db.find(x=>x.id===q.id);
+    const correctOrig = origQ ? origQ.correct : [];
+    const correctSet = new Set(correctOrig);
+    const user = currentRun.userAnswers[qi];
+
+    // Map user's displayed idx -> original idx
+    const mapping = currentRun.optionOrder[qi]; // displayedIdx -> origIdx
+
+    if(!user){
+      perQuestion.push({state:'incorrect', score:0});
+      return;
+    }
+
+    if(!Array.isArray(user)){
+      // radio selection -> single index
+      const selDisplayed = user;
+      const selOrig = mapping[selDisplayed];
+      if(correctSet.has(selOrig) && correctSet.size === 1){
+        perQuestion.push({state:'correct', score:1});
+        totalScore += 1;
+      }else{
+        // either selected correct but there are multiple correct -> treat as incorrect (shouldn't occur because radio used only when single correct)
+        perQuestion.push({state:'incorrect', score:0});
+      }
+      return;
+    }
+
+    // Multiple-answer question: user is array of displayed indexes
+    // Convert to set of orig indexes
+    const userOrig = user.map(di => mapping[di]);
+    // If any selected orig is not in correctSet -> incorrect
+    const anyWrong = userOrig.some(o=>!correctSet.has(o));
+    if(anyWrong){
+      perQuestion.push({state:'incorrect', score:0});
+      return;
+    }
+    // No wrong selected. Now count how many correct selected
+    const selectedCorrectCount = userOrig.filter(o=>correctSet.has(o)).length;
+    if(selectedCorrectCount === 0){
+      perQuestion.push({state:'incorrect', score:0});
+      return;
+    }
+    if(selectedCorrectCount === correctSet.size){
+      perQuestion.push({state:'correct', score:1});
+      totalScore += 1;
+      return;
+    }
+    // partial
+    const frac = selectedCorrectCount / correctSet.size;
+    perQuestion.push({state:'partial', score:frac});
+    totalScore += frac;
+  });
+
+  // percent = (totalScore / total) * 100
+  const percent = Math.round((totalScore / total) * 100);
+  percentResult.textContent = percent + '%';
+  scoreText.textContent = `Отмечено: ${Math.round(totalScore*100)/100} балла(ов) из ${total} возможных. Вопросов: ${total}.`;
+
+  // Render grid
+  resultGrid.innerHTML = '';
+  perQuestion.forEach((p,idx)=>{
+    const c = document.createElement('div');
+    c.className = 'cell';
+    c.textContent = idx+1;
+    if(p.state === 'correct') c.classList.add('correct');
+    else if(p.state === 'partial') c.classList.add('partial');
+    else c.classList.add('incorrect');
+
+    c.addEventListener('click', ()=>{
+      showReview(idx, p);
+    });
+    resultGrid.appendChild(c);
+  });
+
+  // store last run results for review
+  currentRun._results = perQuestion;
+  showResults();
+}
+
+/* Review a specific question from results */
+function showReview(runIndex, p){
+  reviewArea.classList.remove('hidden');
+  reviewArea.innerHTML = '';
+  const db = loadDB();
+  const q = currentRun.questions[runIndex];
+  const origQ = db.find(x=>x.id===q.id);
+  const correctOrig = origQ ? origQ.correct : [];
+  const mapping = currentRun.optionOrder[runIndex]; // displayedIdx -> origIdx
+
+  const header = document.createElement('div');
+  header.innerHTML = `<h3>Вопрос ${runIndex+1} — ${p.state.toUpperCase()}</h3><div style="margin-bottom:8px;font-weight:600">${q.text}</div>`;
+  reviewArea.appendChild(header);
+
+  const list = document.createElement('div');
+  list.style.display='flex'; list.style.flexDirection='column'; list.style.gap='6px';
+  q.options.forEach((opt,di)=>{
+    const origIdx = mapping[di];
+    const isCorrect = correctOrig.includes(origIdx);
+    const userSel = currentRun.userAnswers[runIndex];
+    let selected = false;
+    if(Array.isArray(userSel)) selected = userSel.includes(di);
+    else selected = userSel === di;
+
+    const row = document.createElement('div');
+    row.style.display='flex'; row.style.justifyContent='space-between'; row.style.padding='8px'; row.style.borderRadius='6px';
+    row.style.border = '1px solid #eef2f7';
+    if(isCorrect) row.style.background = '#eafbea'; // light green
+    if(selected) row.style.boxShadow = 'inset 0 0 0 3px rgba(43,124,255,0.06)';
+    row.innerHTML = `<div>${opt.text}</div><div class="small-muted">${isCorrect ? 'Правильно' : ''} ${selected ? ' — Вы выбрали' : ''}</div>`;
+    list.appendChild(row);
+  });
+  reviewArea.appendChild(list);
+
+  // Jump to that question in test if user wants (optional)
+  const jumpBtn = document.createElement('button');
+  jumpBtn.className = 'btn';
+  jumpBtn.textContent = 'Open in test';
+  jumpBtn.style.marginTop = '10px';
+  jumpBtn.addEventListener('click', ()=>{
+    showTest();
+    renderQuestion(runIndex);
+    // hide results
+    resultsPage.classList.add('hidden');
+  });
+  reviewArea.appendChild(jumpBtn);
+}
+
+/* Start new test from results */
+startNew.addEventListener('click', ()=>{
+  startTest();
+});
+
+/* ---------------- INIT ---------------- */
+document.addEventListener('DOMContentLoaded', ()=>{
+  renderUpload();
+  showUpload();
+});
+
+/* ---------------- EXPORT BUTTUON ---------------- */
+document.getElementById("exportBtn").addEventListener("click", function () {
+    const data = JSON.stringify(loadDB(), null, 4);
+
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "tests_backup.json";
+    a.click();
+
+    URL.revokeObjectURL(url);
+});
+
+/* ---------------- IMPORT BUTTUON ---------------- */
+document.getElementById("importBtn").addEventListener("click", () => {
+    document.getElementById("importFile").click();
+});
+
+document.getElementById("importFile").addEventListener("change", function () {
+    const file = this.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (event) {
+        try {
+            const imported = JSON.parse(event.target.result);
+
+            if (!Array.isArray(imported)) {
+                alert("Error: файл не содержит корректные данные!");
+                return;
+            }
+
+            // перезаписываем базу сайта
+            saveDB(imported);
+
+            alert("Импорт успешно выполнен!");
+            location.reload();
+        }
+        catch (e) {
+            alert("Ошибка чтения файла!");
+        }
+    };
+
+    reader.readAsText(file);
+});
+
+</script>
+</body>
+</html>
